@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ArcGIS API for JavaScript Sample with Location Search</title>
+    <title>ArcGIS API for JavaScript Sample with WMS Layer</title>
     <link
       rel="stylesheet"
       href="https://js.arcgis.com/4.29/esri/themes/light/main.css"
@@ -53,37 +53,44 @@
         background-color: #f0f0f0;
       }
 
-      .copyright-url {
+      .control-buttons {
         position: absolute;
-        bottom: 5px;
-        right: 40px;
-        padding: 0 4px;
-        font-family: sans-serif;
-        font-size: 12px;
+        top: 10px;
+        left: 10px;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
       }
 
-      .copyright-logo {
-        position: absolute;
-        bottom: 5px;
-        right: 10px;
-        width: 28px;
-        height: 28px;
-        display: inline-flex;
-        background: url;
-        background-size: 28px;
+      .button {
+        padding: 5px;
+        background-color: #0079c1;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
       }
 
-      /* Responsive adjustments */
-      @media (max-width: 600px) {
-        .search-container {
-          max-width: 90%; /* Use more width on smaller screens */
-          width: 95%; /* Allow more room */
-          right: 5%; /* Adjust position */
-        }
+      .button:hover {
+        background-color: #005a8c;
+      }
 
-        .result-item {
-          font-size: 14px; /* Adjust font size for readability */
-        }
+      /* Popup styles */
+      .popup-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .popup-table th,
+      .popup-table td {
+        border: 1px solid #ccc;
+        padding: 4px;
+        text-align: left;
+      }
+
+      .popup-table th {
+        background-color: #f2f2f2;
       }
     </style>
   </head>
@@ -93,8 +100,17 @@
       <input type="text" id="search-input" placeholder="Search location..." />
       <div class="results" id="results-container"></div>
     </div>
-    <script src="https://js.arcgis.com/4.29/"></script>
+
+    <div class="control-buttons">
+      <button class="button" id="add-point">Add Point</button>
+      <button class="button" id="add-line">Add Line</button>
+      <button class="button" id="add-polygon">Add Polygon</button>
+      <button class="button" id="add-wms">Add WMS Layer</button>
+    </div>
+
     <div id="map-area"></div>
+
+    <script src="https://js.arcgis.com/4.29/"></script>
     <script>
       require([
         "esri/Map",
@@ -105,6 +121,9 @@
         "esri/geometry/Point",
         "esri/layers/GraphicsLayer",
         "esri/Graphic",
+        "esri/layers/WMSLayer",
+        "esri/geometry/Polyline",
+        "esri/geometry/Polygon",
       ], function (
         Map,
         Basemap,
@@ -113,19 +132,18 @@
         SpatialReference,
         Point,
         GraphicsLayer,
-        Graphic
+        Graphic,
+        WMSLayer,
+        Polyline,
+        Polygon
       ) {
         const basemapVTURL =
           "https://mapapi.geodata.gov.hk/gs/api/v1.0.0/vt/basemap/HK80";
-        const mapLabelVTUrl =
-          "https://mapapi.geodata.gov.hk/gs/api/v1.0.0/vt/label/hk/tc/HK80";
 
         const basemap = new Basemap({
           baseLayers: [
             new VectorTileLayer({
               url: basemapVTURL,
-              copyright:
-                '<a href="https://api.portal.hkmapservice.gov.hk/disclaimer" target="_blank" class="copyright-url">&copy; 地圖資料由地政總署提供</a><div class="copyright-logo"></div>',
             }),
           ],
         });
@@ -144,9 +162,24 @@
           constraints: { minZoom: 8, maxZoom: 19 },
         });
 
-        // Create a graphics layer for the pin
+        // Create a graphics layer for the pins
         const graphicsLayer = new GraphicsLayer();
         map.add(graphicsLayer);
+
+        // Add WMS Layer
+        document.getElementById("add-wms").onclick = function () {
+          const wmsLayer = new WMSLayer({
+            url: "https://portal.csdi.gov.hk/server/services/common/lcsd_rcd_1670384557490_22821/MapServer/WMSServer",
+            sublayers: [
+              {
+                name: "0", // Adjust this if needed to match your WMS layer names
+                title: "IPPET",
+              },
+            ],
+            visible: true,
+          });
+          map.add(wmsLayer);
+        };
 
         // Function to search and display results
         function searchLocations(query) {
@@ -187,13 +220,10 @@
                       const pointGraphic = new Graphic({
                         geometry: point,
                         symbol: {
-                          type: "simple-marker",
-                          color: "red",
-                          size: "12px",
-                          outline: {
-                            color: "white",
-                            width: 1,
-                          },
+                          type: "picture-marker",
+                          url: "https://example.com/path/to/dog-icon.png", // Replace with your dog icon URL
+                          width: "24px",
+                          height: "24px",
                         },
                       });
                       graphicsLayer.removeAll(); // Remove previous pins
@@ -219,6 +249,76 @@
             const query = this.value;
             searchLocations(query);
           });
+
+        // Adding Points
+        document.getElementById("add-point").onclick = function () {
+          mView.on("click", function (event) {
+            const point = new Point(
+              event.mapPoint.longitude,
+              event.mapPoint.latitude,
+              new SpatialReference({ wkid: 4326 })
+            );
+            const pointGraphic = new Graphic({
+              geometry: point,
+              symbol: {
+                type: "picture-marker",
+                url: "https://example.com/path/to/dog-icon.png", // Replace with your dog icon URL
+                width: "24px",
+                height: "24px",
+              },
+            });
+            graphicsLayer.add(pointGraphic);
+            mView.popup.close(); // Close any open popups
+          });
+        };
+
+        // Adding Lines
+        let linePoints = [];
+        document.getElementById("add-line").onclick = function () {
+          mView.on("click", function (event) {
+            linePoints.push([
+              event.mapPoint.longitude,
+              event.mapPoint.latitude,
+            ]);
+            if (linePoints.length > 1) {
+              const polyline = new Polyline({ paths: [linePoints] });
+              const lineGraphic = new Graphic({
+                geometry: polyline,
+                symbol: {
+                  type: "simple-line",
+                  color: "green",
+                  width: 2,
+                },
+              });
+              graphicsLayer.add(lineGraphic);
+              linePoints = []; // Reset for the next line
+            }
+          });
+        };
+
+        // Adding Polygons
+        let polygonPoints = [];
+        document.getElementById("add-polygon").onclick = function () {
+          mView.on("click", function (event) {
+            polygonPoints.push([
+              event.mapPoint.longitude,
+              event.mapPoint.latitude,
+            ]);
+            if (polygonPoints.length > 2) {
+              const polygon = new Polygon({ rings: [polygonPoints] });
+              const polygonGraphic = new Graphic({
+                geometry: polygon,
+                symbol: {
+                  type: "simple-fill",
+                  color: [51, 51, 204, 0.3],
+                  outline: { color: "black", width: 1 },
+                },
+              });
+              graphicsLayer.add(polygonGraphic);
+              polygonPoints = []; // Reset for the next polygon
+            }
+          });
+        };
       });
     </script>
   </body>
