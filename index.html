@@ -28,16 +28,18 @@
         font-size: 24px;
       }
       .search-container {
-        padding: 10px;
-        background-color: white;
+        padding: 5px;
         position: absolute;
-        top: 10px;
+        top: 80px; /* Adjusted to move it down */
         right: 10px;
         z-index: 10;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        max-width: 80%; /* Reduced width */
+      }
+      #search-input {
+        width: 100%; /* Full width for mobile */
+        border: none; /* Removed white frame */
+        padding: 5px;
         border-radius: 5px;
-        max-width: 300px;
-        width: 90%;
       }
       .results {
         margin-top: 10px;
@@ -96,7 +98,8 @@
       <div class="results" id="results-container"></div>
     </div>
     <div class="control-buttons">
-      <button class="button" id="add-wms">Add WMS Layer</button>
+      <button class="button" id="add-music">Music</button>
+      <!-- Renamed button -->
     </div>
     <div id="map-area"></div>
 
@@ -161,7 +164,8 @@
         // ---- WMS Layer logic ----
         let wmsLayer, _wmsClickHandle;
 
-        document.getElementById("add-wms").onclick = function () {
+        document.getElementById("add-music").onclick = function () {
+          // Updated button callback
           if (wmsLayer) {
             map.remove(wmsLayer);
           }
