@@ -90,9 +90,7 @@
     </style>
   </head>
   <body>
-    <header>
-      WASSFUN
-    </header>
+    <header>WASSFUN</header>
     <div class="search-container">
       <input type="text" id="search-input" placeholder="Search location..." />
       <div class="results" id="results-container"></div>
@@ -218,7 +216,9 @@
               })
               .catch((err) => {
                 mView.popup.close();
-                alert("Failed to retrieve feature info (may need different INFO_FORMAT).");
+                alert(
+                  "Failed to retrieve feature info (may need different INFO_FORMAT)."
+                );
               });
           });
         };
@@ -230,7 +230,11 @@
           graphicsLayer.removeAll();
 
           if (query) {
-            fetch(`https://geodata.gov.hk/gs/api/v1.0.0/locationSearch?q=${encodeURIComponent(query)}`)
+            fetch(
+              `https://geodata.gov.hk/gs/api/v1.0.0/locationSearch?q=${encodeURIComponent(
+                query
+              )}`
+            )
               .then((response) =>
                 response.ok ? response.json() : Promise.reject("Network error")
               )
