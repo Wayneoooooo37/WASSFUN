@@ -1,313 +1,284 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WASSFUN</title>
-    <link
-      rel="stylesheet"
-      href="https://js.arcgis.com/4.29/esri/themes/light/main.css"
-    />
+    <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
     <style>
-      html,
-      body {
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        font-family: sans-serif;
-      }
-      #map-area {
-        width: 100%;
-        height: 90vh;
-      }
-      header {
-        background-color: green;
-        color: white;
-        text-align: center;
-        padding: 10px;
-        font-size: 24px;
-      }
-      .search-container {
-        padding: 5px;
-        position: absolute;
-        top: 80px; /* Adjusted to move it down */
-        right: 10px;
-        z-index: 10;
-        max-width: 80%; /* Reduced width */
-      }
-      #search-input {
-        width: 100%; /* Full width for mobile */
-        border: none; /* Removed white frame */
-        padding: 5px;
-        border-radius: 5px;
-      }
-      .results {
-        margin-top: 10px;
-        max-height: 200px;
-        overflow-y: auto;
-        border: 1px solid #ccc;
-        background: white;
-        border-radius: 5px;
-      }
-      .result-item {
-        padding: 5px;
-        cursor: pointer;
-      }
-      .result-item:hover {
-        background-color: #f0f0f0;
-      }
-      .control-buttons {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        z-index: 10;
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-      }
-      .button {
-        padding: 5px;
-        background-color: #0079c1;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-      }
-      .button:hover {
-        background-color: #005a8c;
-      }
-      .popup-table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      .popup-table th,
-      .popup-table td {
-        border: 1px solid #ccc;
-        padding: 4px;
-        text-align: left;
-      }
-      .popup-table th {
-        background-color: #f2f2f2;
-      }
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            font-family: sans-serif;
+        }
+        #map-area {
+            width: 100%;
+            height: 95vh;
+        }
+        header {
+            background-color: green;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 24px;
+        }
+        .search-container {
+            padding: 5px;
+            position: absolute;
+            top: 50px; 
+            Right: 20px;
+            z-index: 10;
+            max-width: 30%; 
+        }
+        #search-input {
+            width: 100%; 
+            border: none; 
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .results {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: scroll;
+            border: 1px solid #ccc;
+            background: white;
+            border-radius: 3px;
+        }
+        .result-item {
+            padding: 5px;
+            cursor: pointer;
+        }
+        .result-item:hover {
+            background-color: #f0f0f0;
+        }
+        .control-buttons {
+            position: absolute;
+            top: 150px;
+            left: 10px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .button {
+            padding: 10px;
+            background-color: #0079c1;
+            color: white;
+            border: none;
+            border-radius: 0px;
+            cursor: pointer;
+        }
+        .button:hover {
+            background-color: #005a8c;
+        }
+        .popup-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .popup-table th, .popup-table td {
+            border: 1px solid #ccc;
+            padding: 4px;
+            text-align: left;
+        }
+        .popup-table th {
+            background-color: #f2f2f2;
+        }
     </style>
-  </head>
-  <body>
+</head>
+<body>
     <header>WASSFUN</header>
     <div class="search-container">
-      <input type="text" id="search-input" placeholder="Search location..." />
-      <div class="results" id="results-container"></div>
+        <input type="text" id="search-input" placeholder="Search location" />
+        <div class="results" id="results-container"></div>
     </div>
     <div class="control-buttons">
-      <button class="button" id="add-music">Music</button>
-      <!-- Renamed button -->
+        <button class="button" id="add-music">Music</button>
     </div>
     <div id="map-area"></div>
 
     <script src="https://js.arcgis.com/4.29/"></script>
     <script>
-      require([
-        "esri/Map",
-        "esri/Basemap",
-        "esri/layers/VectorTileLayer",
-        "esri/layers/WebTileLayer",
-        "esri/views/MapView",
-        "esri/geometry/SpatialReference",
-        "esri/geometry/Point",
-        "esri/layers/GraphicsLayer",
-        "esri/Graphic",
-        "esri/layers/WMSLayer",
-      ], function (
-        Map,
-        Basemap,
-        VectorTileLayer,
-        WebTileLayer,
-        MapView,
-        SpatialReference,
-        Point,
-        GraphicsLayer,
-        Graphic,
-        WMSLayer
-      ) {
-        // BASEMAP
-        const basemapVTURL =
-          "https://mapapi.geodata.gov.hk/gs/api/v1.0.0/vt/basemap/HK80";
-        const basemap = new Basemap({
-          baseLayers: [new VectorTileLayer({ url: basemapVTURL })],
-        });
+        require([
+            "esri/Map",
+            "esri/Basemap",
+            "esri/layers/VectorTileLayer",
+            "esri/layers/WebTileLayer",
+            "esri/views/MapView",
+            "esri/geometry/SpatialReference",
+            "esri/geometry/Point",
+            "esri/layers/GraphicsLayer",
+            "esri/Graphic",
+            "esri/layers/WMSLayer",
+        ], function (
+            Map,
+            Basemap,
+            VectorTileLayer,
+            WebTileLayer,
+            MapView,
+            SpatialReference,
+            Point,
+            GraphicsLayer,
+            Graphic,
+            WMSLayer
+        ) {
+            const basemapVTURL = "https://mapapi.geodata.gov.hk/gs/api/v1.0.0/vt/basemap/HK80";
+            const basemap = new Basemap({
+                baseLayers: [new VectorTileLayer({ url: basemapVTURL })],
+            });
 
-        // MAP INIT
-        const map = new Map({ basemap: basemap });
-        const mView = new MapView({
-          container: "map-area",
-          map: map,
-          zoom: 10,
-          center: new Point(
-            833359.88495,
-            822961.986247,
-            new SpatialReference({ wkid: 2326 })
-          ),
-          constraints: { minZoom: 8, maxZoom: 19 },
-        });
+            const map = new Map({ basemap: basemap });
+            const mView = new MapView({
+                container: "map-area",
+                map: map,
+                zoom: 10,
+                center: new Point(833359.88495, 822961.986247, new SpatialReference({ wkid: 2326 })),
+                constraints: { minZoom: 8, maxZoom: 19 },
+            });
 
-        // Pin/Marker Layer
-        const graphicsLayer = new GraphicsLayer();
-        map.add(graphicsLayer);
+            const graphicsLayer = new GraphicsLayer();
+            map.add(graphicsLayer);
 
-        // LABELS Layer
-        const labelLayer = new WebTileLayer({
-          urlTemplate:
-            "https://mapapi.geodata.gov.hk/gs/api/v1.0.0/xyz/label/hk/en/2326/{z}/{x}/{y}.png",
-          spatialReference: { wkid: 2326 },
-        });
-        map.add(labelLayer);
+            // Updated label layer using the specified format
+            const labelLayer = new WebTileLayer({
+                urlTemplate: "https://mapapi.geodata.gov.hk/gs/api/v1.0.0/vt/label/hk/en/2326/tile/{z}/{y}/{x}.pbf",
+                spatialReference: { wkid: 2326 },
+            });
+            map.add(labelLayer);
 
-        // ---- WMS Layer logic ----
-        let wmsLayer, _wmsClickHandle;
+            // Fetching styles to ensure the layer is configured correctly
+            fetch("https://mapapi.geodata.gov.hk/gs/api/v1.0.0/vt/label/hk/en/2326/resources/styles/root.json")
+                .then(response => {
+                    if (!response.ok) throw new Error("Failed to load styles");
+                    return response.json();
+                })
+                .then(styles => {
+                    console.log("Styles loaded:", styles);
+                    // You can log styles or handle them as needed
+                })
+                .catch(error => {
+                    console.error("Error loading styles:", error);
+                });
 
-        document.getElementById("add-music").onclick = function () {
-          // Updated button callback
-          if (wmsLayer) {
-            map.remove(wmsLayer);
-          }
-          wmsLayer = new WMSLayer({
-            url: "https://portal.csdi.gov.hk/server/services/common/lcsd_rcd_1670384557490_22821/MapServer/WMSServer",
-            sublayers: [
-              {
-                name: "0",
-                title: "IPPET",
-              },
-            ],
-            visible: true,
-          });
-          map.add(wmsLayer);
+            let wmsLayer, _wmsClickHandle;
 
-          if (_wmsClickHandle) {
-            _wmsClickHandle.remove();
-          }
-          _wmsClickHandle = mView.on("click", function (event) {
-            const screenPoint = mView.toScreen(event.mapPoint);
-            const bbox = `${mView.extent.xmin},${mView.extent.ymin},${mView.extent.xmax},${mView.extent.ymax}`;
-            const wmsURL = wmsLayer.url;
-            const params = {
-              SERVICE: "WMS",
-              VERSION: "1.1.1",
-              REQUEST: "GetFeatureInfo",
-              LAYERS: "0",
-              QUERY_LAYERS: "0",
-              SRS: "EPSG:2326",
-              BBOX: bbox,
-              WIDTH: mView.width,
-              HEIGHT: mView.height,
-              X: Math.round(screenPoint.x),
-              Y: Math.round(screenPoint.y),
-              INFO_FORMAT: "application/json",
-              FEATURE_COUNT: 1,
-            };
-            const urlParams = Object.entries(params)
-              .map(([k, v]) => k + "=" + encodeURIComponent(v))
-              .join("&");
-            const featureInfoUrl = wmsURL + "?" + urlParams;
-
-            fetch(featureInfoUrl)
-              .then((res) => res.json())
-              .then((data) => {
-                if (data && data.features && data.features.length > 0) {
-                  showPopup(data.features[0].properties, event.mapPoint);
-                } else {
-                  mView.popup.close();
-                  alert("No feature info found at this point.");
+            document.getElementById("add-music").onclick = function () {
+                if (wmsLayer) {
+                    map.remove(wmsLayer);
                 }
-              })
-              .catch((err) => {
-                mView.popup.close();
-                alert(
-                  "Failed to retrieve feature info (may need different INFO_FORMAT)."
-                );
-              });
-          });
-        };
+                wmsLayer = new WMSLayer({
+                    url: "https://portal.csdi.gov.hk/server/services/common/lcsd_rcd_1670384557490_22821/MapServer/WMSServer",
+                    sublayers: [{ name: "0", title: "IPPET" }],
+                    visible: true,
+                });
+                map.add(wmsLayer);
 
-        // Search and pin logic
-        function searchLocations(query) {
-          const resultsContainer = document.getElementById("results-container");
-          resultsContainer.innerHTML = "";
-          graphicsLayer.removeAll();
-
-          if (query) {
-            fetch(
-              `https://geodata.gov.hk/gs/api/v1.0.0/locationSearch?q=${encodeURIComponent(
-                query
-              )}`
-            )
-              .then((response) =>
-                response.ok ? response.json() : Promise.reject("Network error")
-              )
-              .then((data) => {
-                if (data && data.length > 0) {
-                  data.forEach((location) => {
-                    const coordinates = [location.x, location.y];
-                    const resultItem = document.createElement("div");
-                    resultItem.className = "result-item";
-                    resultItem.innerText = `${location.nameZH} (${location.districtZH}) - ${location.nameEN}`;
-                    resultItem.onclick = () => {
-                      const point = new Point(
-                        coordinates[0],
-                        coordinates[1],
-                        new SpatialReference({ wkid: 2326 })
-                      );
-                      mView.goTo({ target: point, zoom: 15 });
-                      const pointGraphic = new Graphic({
-                        geometry: point,
-                        symbol: {
-                          type: "picture-marker",
-                          url: "https://static.arcgis.com/images/Symbols/Shapes/BluePin1LargeB.png",
-                          width: "24px",
-                          height: "24px",
-                        },
-                      });
-                      graphicsLayer.removeAll();
-                      graphicsLayer.add(pointGraphic);
+                if (_wmsClickHandle) {
+                    _wmsClickHandle.remove();
+                }
+                _wmsClickHandle = mView.on("click", function (event) {
+                    const screenPoint = mView.toScreen(event.mapPoint);
+                    const bbox = `${mView.extent.xmin},${mView.extent.ymin},${mView.extent.xmax},${mView.extent.ymax}`;
+                    const wmsURL = wmsLayer.url;
+                    const params = {
+                        SERVICE: "WMS",
+                        VERSION: "1.1.1",
+                        REQUEST: "GetFeatureInfo",
+                        LAYERS: "0",
+                        QUERY_LAYERS: "0",
+                        SRS: "EPSG:2326",
+                        BBOX: bbox,
+                        WIDTH: mView.width,
+                        HEIGHT: mView.height,
+                        X: Math.round(screenPoint.x),
+                        Y: Math.round(screenPoint.y),
+                        INFO_FORMAT: "application/json",
+                        FEATURE_COUNT: 1,
                     };
-                    resultsContainer.appendChild(resultItem);
-                  });
-                } else {
-                  alert("No results found.");
-                }
-              })
-              .catch((error) => {
-                console.error("Error fetching location:", error);
-                alert("An error occurred while fetching location data.");
-              });
-          }
-        }
+                    const urlParams = Object.entries(params)
+                        .map(([k, v]) => k + "=" + encodeURIComponent(v))
+                        .join("&");
+                    const featureInfoUrl = wmsURL + "?" + urlParams;
 
-        // Popup for WMS/table
-        function showPopup(attributes, location) {
-          const popupContent = `
+                    fetch(featureInfoUrl)
+                        .then((res) => res.json())
+                        .then((data) => {
+                            if (data && data.features && data.features.length > 0) {
+                                showPopup(data.features[0].properties, event.mapPoint);
+                            } else {
+                                mView.popup.close();
+                                alert("No feature info found at this point.");
+                            }
+                        })
+                        .catch((err) => {
+                            mView.popup.close();
+                            alert("Failed to retrieve feature info (may need different INFO_FORMAT).");
+                        });
+                });
+            };
+
+            function searchLocations(query) {
+                const resultsContainer = document.getElementById("results-container");
+                resultsContainer.innerHTML = "";
+                graphicsLayer.removeAll();
+
+                if (query) {
+                    fetch(`https://geodata.gov.hk/gs/api/v1.0.0/locationSearch?q=${encodeURIComponent(query)}`)
+                        .then((response) => response.ok ? response.json() : Promise.reject("Network error"))
+                        .then((data) => {
+                            if (data && data.length > 0) {
+                                data.forEach((location) => {
+                                    const coordinates = [location.x, location.y];
+                                    const resultItem = document.createElement("div");
+                                    resultItem.className = "result-item";
+                                    resultItem.innerText = `${location.nameZH} (${location.districtZH}) - ${location.nameEN}`;
+                                    resultItem.onclick = () => {
+                                        const point = new Point(coordinates[0], coordinates[1], new SpatialReference({ wkid: 2326 }));
+                                        mView.goTo({ target: point, zoom: 15 });
+                                        const pointGraphic = new Graphic({
+                                            geometry: point,
+                                            symbol: {
+                                                type: "picture-marker",
+                                                url: "https://static.arcgis.com/images/Symbols/Shapes/BluePin1LargeB.png",
+                                                width: "24px",
+                                                height: "24px",
+                                            },
+                                        });
+                                        graphicsLayer.removeAll();
+                                        graphicsLayer.add(pointGraphic);
+                                    };
+                                    resultsContainer.appendChild(resultItem);
+                                });
+                            } else {
+                                alert("No results found.");
+                            }
+                        })
+                        .catch((error) => {
+                            console.error("Error fetching location:", error);
+                            alert("An error occurred while fetching location data.");
+                        });
+                }
+            }
+
+            function showPopup(attributes, location) {
+                const popupContent = `
                     <table class="popup-table">
                         <tr><th>Attribute</th><th>Value</th></tr>
-                        ${Object.keys(attributes)
-                          .map(
-                            (key) =>
-                              `<tr><td>${key}</td><td>${attributes[key]}</td></tr>`
-                          )
-                          .join("")}
+                        ${Object.keys(attributes).map(key => `<tr><td>${key}</td><td>${attributes[key]}</td></tr>`).join("")}
                     </table>
                 `;
-          mView.popup.open({
-            title: "Feature Attributes",
-            content: popupContent,
-            location: location,
-          });
-        }
+                mView.popup.open({
+                    title: "Feature Attributes",
+                    content: popupContent,
+                    location: location,
+                });
+            }
 
-        document
-          .getElementById("search-input")
-          .addEventListener("input", function () {
-            const query = this.value;
-            searchLocations(query);
-          });
-      });
+            document.getElementById("search-input").addEventListener("input", function () {
+                const query = this.value;
+                searchLocations(query);
+            });
+        });
     </script>
-  </body>
+</body>
 </html>
