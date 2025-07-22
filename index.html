@@ -17,11 +17,14 @@
             height: 95vh;
         }
         header {
-            background-color: green;
-            color: white;
-            text-align: center;
+            background-color: White;
+            color: black;
+            text-align: Left;
             padding: 10px;
             font-size: 24px;
+            font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+            font-style: italic;
+            
         }
         .search-container {
             padding: 5px;
@@ -63,14 +66,14 @@
         }
         .button {
             padding: 10px;
-            background-color: #0079c1;
+            background-color: black;
             color: white;
             border: none;
             border-radius: 0px;
             cursor: pointer;
         }
         .button:hover {
-            background-color: #005a8c;
+            background-color:black;
         }
         .popup-table {
             width: 100%;
@@ -122,9 +125,15 @@
             Graphic,
             WMSLayer
         ) {
+            //Basemap and Label (Lands Vector Map and Vector Map Label)
             const basemapVTURL = "https://mapapi.geodata.gov.hk/gs/api/v1.0.0/vt/basemap/HK80";
+            const mapLabelVTUrl = "https://mapapi.geodata.gov.hk/gs/api/v1.0.0/vt/label/hk/en/HK80";
+
             const basemap = new Basemap({
-                baseLayers: [new VectorTileLayer({ url: basemapVTURL })],
+                baseLayers: [new VectorTileLayer({ 
+                    url: basemapVTURL,
+                    copyright: '<a href="https://api.portal.hkmapservice.gov.hk/disclaimer" target="_blank" class="copyright-url">&copy; 地圖資料由地政總署提供</a><div class="copyright-logo" ></div>'
+                 })],
             });
 
             const map = new Map({ basemap: basemap });
@@ -139,33 +148,11 @@
             const graphicsLayer = new GraphicsLayer();
             map.add(graphicsLayer);
 
-            // Updated label layer using the specified format
-            const labelLayer = new WebTileLayer({
-                urlTemplate: "https://mapapi.geodata.gov.hk/gs/api/v1.0.0/vt/label/hk/en/2326/tile/{z}/{y}/{x}.pbf",
-                spatialReference: { wkid: 2326 },
-            });
-            map.add(labelLayer);
-
-            // Fetching styles to ensure the layer is configured correctly
-            fetch("https://mapapi.geodata.gov.hk/gs/api/v1.0.0/vt/label/hk/en/2326/resources/styles/root.json")
-                .then(response => {
-                    if (!response.ok) throw new Error("Failed to load styles");
-                    return response.json();
-                })
-                .then(styles => {
-                    console.log("Styles loaded:", styles);
-                    // You can log styles or handle them as needed
-                })
-                .catch(error => {
-                    console.error("Error loading styles:", error);
-                });
+            map.add(new VectorTileLayer(mapLabelVTUrl))
 
             let wmsLayer, _wmsClickHandle;
 
             document.getElementById("add-music").onclick = function () {
-                if (wmsLayer) {
-                    map.remove(wmsLayer);
-                }
                 wmsLayer = new WMSLayer({
                     url: "https://portal.csdi.gov.hk/server/services/common/lcsd_rcd_1670384557490_22821/MapServer/WMSServer",
                     sublayers: [{ name: "0", title: "IPPET" }],
@@ -173,9 +160,6 @@
                 });
                 map.add(wmsLayer);
 
-                if (_wmsClickHandle) {
-                    _wmsClickHandle.remove();
-                }
                 _wmsClickHandle = mView.on("click", function (event) {
                     const screenPoint = mView.toScreen(event.mapPoint);
                     const bbox = `${mView.extent.xmin},${mView.extent.ymin},${mView.extent.xmax},${mView.extent.ymax}`;
@@ -192,30 +176,85 @@
                         HEIGHT: mView.height,
                         X: Math.round(screenPoint.x),
                         Y: Math.round(screenPoint.y),
-                        INFO_FORMAT: "application/json",
-                        FEATURE_COUNT: 1,
+                        INFO_FORMAT: "text/xml",
                     };
-                    const urlParams = Object.entries(params)
-                        .map(([k, v]) => k + "=" + encodeURIComponent(v))
-                        .join("&");
-                    const featureInfoUrl = wmsURL + "?" + urlParams;
 
-                    fetch(featureInfoUrl)
-                        .then((res) => res.json())
-                        .then((data) => {
-                            if (data && data.features && data.features.length > 0) {
-                                showPopup(data.features[0].properties, event.mapPoint);
+                    const urlParams = new URLSearchParams(params).toString();
+                    const featureInfoUrl = `${wmsURL}?${urlParams}`;
+
+                fetch(featureInfoUrl)
+                    .then((res) => {
+                        if (!res.ok) {
+                            throw new Error(`Network response was not ok: ${res.statusText}`);
+                        }
+                        return res.text();
+                    })
+                    .then((data) => {
+                        console.log("Response data:", data); // Log the raw response
+                        const parser = new DOMParser();
+                        const xmlDoc = parser.parseFromString(data, "text/xml");
+
+                        const errorNode = xmlDoc.getElementsByTagName("ServiceException")[0];
+                        if (errorNode) {
+                            throw new Error(`WMS Error: ${errorNode.textContent}`);
+                        }
+
+                        const fieldsNode = xmlDoc.getElementsByTagName("FIELDS")[0]; // Adjust based on your XML structure
+                        if (fieldsNode) {
+                            const attributes = {}; // Create an object to hold attributes
+                            Array.from(fieldsNode.attributes).forEach(attr => {
+                                    attributes[attr.name] = attr.value; // Collect attributes
+                                });
+
+                            // Log the extracted attributes
+                            console.log("Extracted Attributes:", attributes);
+
+                            if (Object.keys(attributes).length > 0) {
+                                showPopup(attributes, event.mapPoint); // Display attributes in pop-up
                             } else {
+                                console.log("No attributes found in the response.");
                                 mView.popup.close();
                                 alert("No feature info found at this point.");
                             }
-                        })
-                        .catch((err) => {
+                        } else {
+                            console.log("No fields node found in the response.");
                             mView.popup.close();
-                            alert("Failed to retrieve feature info (may need different INFO_FORMAT).");
-                        });
-                });
+                            alert("No feature info found at this point.");
+                        }
+                    })
+                    .catch((err) => {
+                        console.error("Error fetching feature info:", err);
+                        mView.popup.close();
+                        alert("Failed to retrieve feature info.");
+                    });
+            });
             };
+
+            // Function to show attribute information in a pop-up table
+            function showPopup(attributes, mapPoint) {
+                const popupContent = createPopupTable(attributes);
+                mView.popup.open({
+                    title: "Feature Attributes",
+                    location: mapPoint,
+                    content: popupContent
+                });
+            }
+
+            // Function to create an HTML table from attributes
+            function createPopupTable(attributes) {
+                let table = "<table><thead><tr><th>Attribute</th><th>Value</th></tr></thead><tbody>";
+                for (const [key, value] of Object.entries(attributes)) {
+                    table += `<tr><td>${key}</td><td>${value}</td></tr>`;
+                }
+                table += "</tbody></table>";
+                return table;
+            }
+
+            document.getElementById("search-input").addEventListener("input", function () {
+                const query = this.value;
+                searchLocations(query);
+            });
+        });
 
             function searchLocations(query) {
                 const resultsContainer = document.getElementById("results-container");
@@ -260,25 +299,6 @@
                 }
             }
 
-            function showPopup(attributes, location) {
-                const popupContent = `
-                    <table class="popup-table">
-                        <tr><th>Attribute</th><th>Value</th></tr>
-                        ${Object.keys(attributes).map(key => `<tr><td>${key}</td><td>${attributes[key]}</td></tr>`).join("")}
-                    </table>
-                `;
-                mView.popup.open({
-                    title: "Feature Attributes",
-                    content: popupContent,
-                    location: location,
-                });
-            }
-
-            document.getElementById("search-input").addEventListener("input", function () {
-                const query = this.value;
-                searchLocations(query);
-            });
-        });
     </script>
 </body>
 </html>
