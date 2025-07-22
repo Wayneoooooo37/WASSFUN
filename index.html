@@ -125,10 +125,11 @@
             Graphic,
             WMSLayer
         ) {
-            //Basemap and Label (Lands Vector Map and Vector Map Label)
+
             const basemapVTURL = "https://mapapi.geodata.gov.hk/gs/api/v1.0.0/vt/basemap/HK80";
             const mapLabelVTUrl = "https://mapapi.geodata.gov.hk/gs/api/v1.0.0/vt/label/hk/en/HK80";
-
+            
+            //Basemap and Label (Lands Vector Map and Vector Map Label)
             const basemap = new Basemap({
                 baseLayers: [new VectorTileLayer({ 
                     url: basemapVTURL,
@@ -147,89 +148,101 @@
 
             const graphicsLayer = new GraphicsLayer();
             map.add(graphicsLayer);
+            map.add(new VectorTileLayer(mapLabelVTUrl));
 
-            map.add(new VectorTileLayer(mapLabelVTUrl))
-
-            let wmsLayer, _wmsClickHandle;
+            //Function to show the feature on map
+            let wmsLayer = null, _wmsClickHandle;
 
             document.getElementById("add-music").onclick = function () {
-                wmsLayer = new WMSLayer({
+                if (!wmsLayer){
+                    wmsLayer = new WMSLayer({
                     url: "https://portal.csdi.gov.hk/server/services/common/lcsd_rcd_1670384557490_22821/MapServer/WMSServer",
                     sublayers: [{ name: "0", title: "IPPET" }],
                     visible: true,
                 });
-                map.add(wmsLayer);
+                    map.add(wmsLayer); 
 
-                _wmsClickHandle = mView.on("click", function (event) {
-                    const screenPoint = mView.toScreen(event.mapPoint);
-                    const bbox = `${mView.extent.xmin},${mView.extent.ymin},${mView.extent.xmax},${mView.extent.ymax}`;
-                    const wmsURL = wmsLayer.url;
-                    const params = {
-                        SERVICE: "WMS",
-                        VERSION: "1.1.1",
-                        REQUEST: "GetFeatureInfo",
-                        LAYERS: "0",
-                        QUERY_LAYERS: "0",
-                        SRS: "EPSG:2326",
-                        BBOX: bbox,
-                        WIDTH: mView.width,
-                        HEIGHT: mView.height,
-                        X: Math.round(screenPoint.x),
-                        Y: Math.round(screenPoint.y),
-                        INFO_FORMAT: "text/xml",
-                    };
+                    _wmsClickHandle = mView.on("click", function (event) {
+                        const screenPoint = mView.toScreen(event.mapPoint);
+                        const bbox = `${mView.extent.xmin},${mView.extent.ymin},${mView.extent.xmax},${mView.extent.ymax}`;
+                        const wmsURL = wmsLayer.url;
+                        const params = {
+                            SERVICE: "WMS",
+                            VERSION: "1.1.1",
+                            REQUEST: "GetFeatureInfo",
+                            LAYERS: "0",
+                            QUERY_LAYERS: "0",
+                            SRS: "EPSG:2326",
+                            BBOX: bbox,
+                            WIDTH: mView.width,
+                            HEIGHT: mView.height,
+                            X: Math.round(screenPoint.x),
+                            Y: Math.round(screenPoint.y),
+                            INFO_FORMAT: "text/xml",
+                        };
 
-                    const urlParams = new URLSearchParams(params).toString();
-                    const featureInfoUrl = `${wmsURL}?${urlParams}`;
+                        const urlParams = new URLSearchParams(params).toString();
+                        const featureInfoUrl = `${wmsURL}?${urlParams}`;
 
-                fetch(featureInfoUrl)
-                    .then((res) => {
-                        if (!res.ok) {
-                            throw new Error(`Network response was not ok: ${res.statusText}`);
-                        }
-                        return res.text();
-                    })
-                    .then((data) => {
-                        console.log("Response data:", data); // Log the raw response
-                        const parser = new DOMParser();
-                        const xmlDoc = parser.parseFromString(data, "text/xml");
-
-                        const errorNode = xmlDoc.getElementsByTagName("ServiceException")[0];
-                        if (errorNode) {
-                            throw new Error(`WMS Error: ${errorNode.textContent}`);
-                        }
-
-                        const fieldsNode = xmlDoc.getElementsByTagName("FIELDS")[0]; // Adjust based on your XML structure
-                        if (fieldsNode) {
-                            const attributes = {}; // Create an object to hold attributes
-                            Array.from(fieldsNode.attributes).forEach(attr => {
-                                    attributes[attr.name] = attr.value; // Collect attributes
-                                });
-
-                            // Log the extracted attributes
-                            console.log("Extracted Attributes:", attributes);
-
-                            if (Object.keys(attributes).length > 0) {
-                                showPopup(attributes, event.mapPoint); // Display attributes in pop-up
-                            } else {
-                                console.log("No attributes found in the response.");
-                                mView.popup.close();
-                                alert("No feature info found at this point.");
+                    fetch(featureInfoUrl)
+                        .then((res) => {
+                            if (!res.ok) {
+                                throw new Error(`Network response was not ok: ${res.statusText}`);
                             }
-                        } else {
-                            console.log("No fields node found in the response.");
-                            mView.popup.close();
-                            alert("No feature info found at this point.");
-                        }
-                    })
-                    .catch((err) => {
-                        console.error("Error fetching feature info:", err);
-                        mView.popup.close();
-                        alert("Failed to retrieve feature info.");
-                    });
-            });
-            };
+                            return res.text();
+                        })
+                        .then((data) => {
+                            console.log("Response data:", data); // Log the raw response
+                            const parser = new DOMParser();
+                            const xmlDoc = parser.parseFromString(data, "text/xml");
 
+                            const errorNode = xmlDoc.getElementsByTagName("ServiceException")[0];
+                            if (errorNode) {
+                                throw new Error(`WMS Error: ${errorNode.textContent}`);
+                            }
+
+                            const fieldsNode = xmlDoc.getElementsByTagName("FIELDS")[0]; // Adjust based on your XML structure
+                            if (fieldsNode) {
+                                const attributes = {}; // Create an object to hold attributes
+                                Array.from(fieldsNode.attributes).forEach(attr => {
+                                        attributes[attr.name] = attr.value; // Collect attributes
+                                    });
+
+                                // Log the extracted attributes
+                                console.log("Extracted Attributes:", attributes);
+
+                                if (Object.keys(attributes).length > 0) {
+                                    showPopup(attributes, event.mapPoint); // Display attributes in pop-up
+                                } else {
+                                    console.log("No attributes found in the response.");
+                                    mView.popup.close();
+                                    // alert("No feature info found at this point.");
+                                }
+                            } else {
+                                console.log("No fields node found in the response.");
+                                mView.popup.close();
+                                // alert("No feature info found at this point.");
+                            }
+                        })
+                        .catch((err) => {
+                            console.error("Error fetching feature info:", err);
+                            mView.popup.close();
+                            alert("Failed to retrieve feature info.");
+                        });
+                }); 
+                    } else {
+                // Remove the WMS layer if it exists
+                map.remove(wmsLayer);
+                wmsLayer = null; // Clear the reference
+                console.log("WMS Layer closed.");
+
+                // Remove the click handler
+                if (_wmsClickHandle) {
+                    _wmsClickHandle.remove(); // Assuming _wmsClickHandle returns a handle to remove the listener
+                    _wmsClickHandle = null; // Clear the reference
+                }
+            }
+        }
             // Function to show attribute information in a pop-up table
             function showPopup(attributes, mapPoint) {
                 const popupContent = createPopupTable(attributes);
